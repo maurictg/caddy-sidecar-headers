@@ -268,9 +268,11 @@ func parseHeaders(data []byte, hintsOnly bool) (http.Header, error) {
 		}
 		name, value, ok := strings.Cut(line, ":")
 		name, value = http.CanonicalHeaderKey(name), strings.TrimSpace(value)
-		if !ok || name == "" || !validHeaderValue(value) ||
-			(hintsOnly && name != "Link") || (!hintsOnly && !headersAllowed[name]) {
-			return nil, fmt.Errorf("invalid or disallowed header on line %d", lineNumber)
+		if !ok || name == "" || !validHeaderValue(value) {
+			return nil, fmt.Errorf("invalid header on line %d", lineNumber)
+		}
+		if (hintsOnly && name != "Link") || (!hintsOnly && deniedHeaders[name]) {
+			continue
 		}
 		headers.Add(name, value)
 	}
@@ -286,16 +288,13 @@ func validHeaderValue(value string) bool {
 	return true
 }
 
-// Framing, routing, cookies, validators and representation headers are omitted
-// because they could conflict with file_server.
-var headersAllowed = map[string]bool{
-	"Cache-Control": true, "Content-Disposition": true, "Content-Language": true,
-	"Content-Security-Policy": true, "Content-Security-Policy-Report-Only": true,
-	"Cross-Origin-Embedder-Policy": true, "Cross-Origin-Opener-Policy": true,
-	"Cross-Origin-Resource-Policy": true, "Expires": true, "Link": true,
-	"Permissions-Policy": true, "Referrer-Policy": true, "Reporting-Endpoints": true,
-	"Strict-Transport-Security": true, "Vary": true, "X-Content-Type-Options": true,
-	"X-Frame-Options": true, "X-Xss-Protection": true,
+// These fields can mutate connection framing, the selected representation or
+// client authentication state. Everything else, including custom fields, passes.
+var deniedHeaders = map[string]bool{
+	"Connection": true, "Content-Encoding": true, "Content-Length": true,
+	"Content-Range": true, "Cookie": true, "Keep-Alive": true,
+	"Proxy-Connection": true, "Set-Cookie": true, "Trailer": true,
+	"Transfer-Encoding": true, "Upgrade": true,
 }
 
 func (h *Handler) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {

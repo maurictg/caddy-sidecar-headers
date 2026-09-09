@@ -27,6 +27,9 @@ sudo install -m 0755 ./caddy /usr/local/bin/caddy
 caddy list-modules | grep sidecar_headers
 ```
 
+`@latest` builds the latest pushed GitHub revision. To test this checkout and
+the bundled example, use the local build below.
+
 During local development, point xcaddy at the checkout:
 
 ```sh
@@ -97,33 +100,26 @@ Lines beginning with `#` are comments. A malformed or disallowed line rejects
 the whole sidecar without failing the static response. Files larger than 64 KiB
 are rejected.
 
-Hints files accept only `Link`. Response-header files use a conservative
-allowlist:
+Hints files accept only `Link`. Response-header files accept standard and custom
+headers except this small denylist:
 
 ```text
-Cache-Control
-Content-Disposition
-Content-Language
-Content-Security-Policy
-Content-Security-Policy-Report-Only
-Cross-Origin-Embedder-Policy
-Cross-Origin-Opener-Policy
-Cross-Origin-Resource-Policy
-Expires
-Link
-Permissions-Policy
-Referrer-Policy
-Reporting-Endpoints
-Strict-Transport-Security
-Vary
-X-Content-Type-Options
-X-Frame-Options
-X-XSS-Protection
+Connection
+Content-Encoding
+Content-Length
+Content-Range
+Cookie
+Keep-Alive
+Proxy-Connection
+Set-Cookie
+Trailer
+Transfer-Encoding
+Upgrade
 ```
 
-Framing, routing, cookies, authentication, validators, and representation
-headers are intentionally refused so sidecars cannot interfere with Caddy's
-range handling, redirects, or file validation.
+Denied fields are skipped; malformed input still rejects the whole sidecar.
+The denylist protects connection framing, Caddy's selected representation and
+client cookie state without blocking application-specific headers.
 
 ## Verify
 
@@ -151,12 +147,15 @@ Early Hints sidecar and response-header sidecar. From the repository root:
 xcaddy build v2.11.4 \
   --with github.com/maurictg/caddy-sidecar-headers=.
 ./caddy run --config example/Caddyfile
-curl --http1.1 -i http://localhost:8080/index.html
+curl --http2 --insecure -i https://localhost:1234/
 ```
 
 The output contains a `103 Early Hints` block followed by the final `200 OK`
-response. Request `/index.html` explicitly because implicit directory-index
-selection belongs to `file_server` and is not exposed to this middleware.
+response. The example rewrites `/` internally to `/index.html`, so the middleware
+sees the concrete file without guessing `file_server`'s index configuration.
+It uses local HTTPS because browsers generally process Early Hints only over
+HTTP/2 or newer. Caddy may ask to install its local CA; `curl` uses `--insecure`
+only to keep this smoke test independent of the machine trust store.
 
 ## Behavior notes
 

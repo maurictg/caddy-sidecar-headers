@@ -1,4 +1,6 @@
-Cache-Control: public, max-age=60
+Cache-Control: no-store
 Content-Security-Policy: default-src 'self'; style-src 'self'
 X-Content-Type-Options: nosniff
+X-Example-Sidecar: active
+Set-Cookie: this-must-not=appear
 Link: </style.css>; rel=preload; as=style

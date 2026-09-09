@@ -191,11 +191,17 @@ func TestMalformedAndInjectionAreRejectedAtomically(t *testing.T) {
 	}
 }
 
-func TestDisallowedHeaderRejectsWholeFile(t *testing.T) {
-	result := serve(t, http.MethodGet, nil, []byte("Cache-Control: public\nContent-Length: 999\n"))
+func TestCustomHeadersPassAndDeniedHeadersAreSkipped(t *testing.T) {
+	result := serve(t, http.MethodGet, nil, []byte("X-Custom-Header: works\nContent-Length: 999\nSet-Cookie: secret=yes\n"))
 	assertStatuses(t, result, http.StatusOK)
-	if got := result.records[0].header.Get("Cache-Control"); got != "" {
-		t.Fatalf("sidecar was partially applied: %q", got)
+	if got := result.records[0].header.Get("X-Custom-Header"); got != "works" {
+		t.Fatalf("custom header = %q", got)
+	}
+	if got := result.records[0].header.Get("Content-Length"); got == "999" {
+		t.Fatal("denied Content-Length was applied")
+	}
+	if got := result.records[0].header.Get("Set-Cookie"); got != "" {
+		t.Fatalf("denied Set-Cookie was applied: %q", got)
 	}
 }
 

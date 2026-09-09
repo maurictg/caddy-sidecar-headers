@@ -1,5 +1,11 @@
-:8080 {
+{
+	auto_https disable_redirects
+}
+
+localhost:1234 {
+	tls internal
 	root * ./example/public
+	rewrite / /index.html
 
 	sidecar_headers
 
