@@ -1,0 +1,7 @@
+:8080 {
+	root * ./example/public
+
+	sidecar_headers
+
+	file_server
+}
